@@ -1,7 +1,37 @@
 import os
 
-# 定义要创建的核心文件内容
-TURTLEBOT_CORE_PY = r'''# -*- coding: utf-8 -*-
+def create_file(path, content):
+    with open(path, 'w', encoding='utf-8') as f:
+        f.write(content)
+    print(f"✅ 文件已生成: {path}")
+
+def main():
+    print("🚀 开始初始化 EICPS-Stack 项目结构 (Windows兼容版)...")
+
+    # 1. 创建目录结构
+    dirs = [
+        "core/phi_interface",
+        "core/p_model",
+        "core/e_space",
+        "ros_ws/src/eicps_phi/scripts",
+        "ros_ws/src/eicps_phi/launch",
+        "sim/turtlebot3_gazebo",
+        "sim/usv_mworks",
+        "docs/papers",
+        "training",
+        "deployment"
+    ]
+    
+    for d in dirs:
+        os.makedirs(d, exist_ok=True)
+        print(f"📂 目录已创建: {d}")
+
+    # 创建 Python 包标识
+    open("core/__init__.py", 'a').close()
+    open("core/phi_interface/__init__.py", 'a').close()
+
+    # 2. 写入核心算法库: turtlebot_core.py
+    turtlebot_core_content = r'''# -*- coding: utf-8 -*-
 """
 EICPS Core Logic Library
 对应论文中的 Φ (Phi) 算子实现
@@ -86,8 +116,10 @@ class EICPS_Interface:
         self.last_u_safe = res.x
         return res.x, "optimal"
 '''
+    create_file("core/phi_interface/turtlebot_core.py", turtlebot_core_content)
 
-EICPS_NODE_PY = r'''#!/usr/bin/env python3
+    # 3. 写入 ROS 节点: eicps_phi_node.py
+    node_content = r'''#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 import rospy
@@ -97,18 +129,13 @@ import os
 
 # 动态添加 core 路径
 current_dir = os.path.dirname(os.path.abspath(__file__))
-# 假设目录结构为 ros_ws/src/eicps_phi/scripts/
 core_path = os.path.join(current_dir, '../../../../core')
 sys.path.append(core_path)
 
-# 尝试导入，如果在非ROS环境下可能会失败，这里做个保护
-try:
-    from phi_interface.turtlebot_core import EICPS_Interface
-    from geometry_msgs.msg import Twist
-    from sensor_msgs.msg import LaserScan
-    from std_msgs.msg import Float32
-except ImportError:
-    pass
+from phi_interface.turtlebot_core import EICPS_Interface
+from geometry_msgs.msg import Twist
+from sensor_msgs.msg import LaserScan
+from std_msgs.msg import Float32
 
 class EICPS_Node:
     def __init__(self):
@@ -161,11 +188,13 @@ class EICPS_Node:
 if __name__ == '__main__':
     try:
         EICPS_Node().run()
-    except Exception:
+    except rospy.ROSInterruptException:
         pass
 '''
+    create_file("ros_ws/src/eicps_phi/scripts/eicps_phi_node.py", node_content)
 
-LAUNCH_XML = r'''<launch>
+    # 4. 写入 Launch 文件
+    launch_content = r'''<launch>
   <arg name="d_min" default="0.20" doc="安全距离阈值 (m)"/>
   <arg name="v_max" default="0.26" doc="最大线速度 (m/s)"/>
   
@@ -175,153 +204,19 @@ LAUNCH_XML = r'''<launch>
   </node>
 </launch>
 '''
+    create_file("ros_ws/src/eicps_phi/launch/eicps_turtlebot.launch", launch_content)
 
-REQUIREMENTS_TXT = r'''numpy>=1.20.0
+    # 5. 写入依赖文件
+    req_content = r'''numpy>=1.20.0
 scipy>=1.7.0
 osqp>=0.6.2
 rospkg>=1.3.0
 matplotlib>=3.5.0
 '''
+    create_file("requirements.txt", req_content)
 
-README_MD = r'''# 📦 EICPS-Stack: 具身智能信息物理系统框架
+    print("\n🎉 EICPS-Stack 项目结构初始化完成！")
+    print("您可以直接运行 'git add .' 和 'git commit' 了。")
 
-**Embodied Intelligent Cyber-Physical System Framework**
-
-[![ROS](https://img.shields.io/badge/ROS-Noetic%2FHumble-blue)](http://wiki.ros.org/)
-[![Python](https://img.shields.io/badge/Python-3.8%2B-green)](https://www.python.org/)
-[![License](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
-
-**EICPS-Stack** 是一个统一的具身智能机器人软件栈，实现了 **$\mathbb{P}-\mathcal{E}-\Phi$** 理论框架。它充当 AI 控制器（RL/LLM）与物理机器人（TurtleBot3/USV）之间的“数字脊髓”，提供动力学一致性、形式化安全保证（CBF）与有限时间恢复（PDT）能力。
-
-## 🏗️ 核心架构 (The P-E-Phi Framework)
-
-本框架由三个核心数学模块构成：
-
-1.  **$\mathbb{P}$ (Modeling Process)**: 物理动力学建模与约束定义。
-2.  **$\mathcal{E}$ (Embodied Space)**: 具身空间，包含几何安全集 $h(x) \ge 0$ 与 PDT 时间场 $T(x)$。
-3.  **$\Phi$ (Embodied Interface)**: 具身接口，实现 AI $\to$ Physics 的安全投影。
-    * $\Phi_1$: **HNN** (动力学一致性投影)
-    * $\Phi_2$: **CBF-QP** (安全过滤)
-    * $\Phi_3$: **PDT** (有限时间恢复)
-
-## 📂 目录结构
-
-```text
-EICPS-Stack/
-├── core/                   # [核心] EICPS 数学算法库 (平台无关)
-│   └── phi_interface/      # Φ 接口实现 (HNN/QP/PDT)
-├── ros_ws/                 # [部署] ROS 工作空间
-│   └── src/
-│       └── eicps_phi/      # ROS 节点: 桥接 Core 与 Robot
-├── sim/                    # [仿真] Gazebo/MWORKS 场景
-├── training/               # [训练] RL/HNN 离线训练代码
-└── docs/                   # [文档] 论文与教程
-```
-
-## 🚀 快速开始 (Quick Start)
-
-### 1. 安装依赖
-
-```bash
-# 安装 Python 依赖
-pip install -r requirements.txt
-```
-
-### 2. 运行 EICPS 安全接口
-
-**步骤 A: 启动仿真环境**
-```bash
-export TURTLEBOT3_MODEL=waffle_pi
-roslaunch turtlebot3_gazebo turtlebot3_world.launch
-```
-
-**步骤 B: 启动 EICPS Φ 节点**
-```bash
-# 该节点会拦截 /cmd_vel_ai，处理后发布到 /cmd_vel
-roslaunch eicps_phi eicps_turtlebot.launch
-```
-
----
-**Maintainer:** Zhou Lab @ BIT
-'''
-
-GITIGNORE = r'''# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-
-# ROS
-/ros_ws/build/
-/ros_ws/devel/
-/ros_ws/install/
-/ros_ws/log/
-/ros_ws/.catkin_workspace
-*.bag
-
-# IDEs
-.vscode/
-.idea/
-
-# System
-.DS_Store
-Thumbs.db
-'''
-
-def create_file(path, content):
-    """辅助函数：创建文件并写入内容"""
-    try:
-        with open(path, 'w', encoding='utf-8') as f:
-            f.write(content)
-        print(f"✅ 文件已创建: {path}")
-    except Exception as e:
-        print(f"❌ 创建文件失败 {path}: {str(e)}")
-
-def main():
-    print("🚀 开始初始化 EICPS-Stack 项目 (Windows 兼容版)...")
-    
-    # 1. 创建目录结构
-    dirs = [
-        "core/phi_interface",
-        "core/p_model",
-        "core/e_space",
-        "ros_ws/src/eicps_phi/scripts",
-        "ros_ws/src/eicps_phi/launch",
-        "sim/turtlebot3_gazebo",
-        "sim/usv_mworks",
-        "docs/papers",
-        "training",
-        "deployment"
-    ]
-    
-    for d in dirs:
-        os.makedirs(d, exist_ok=True)
-        print(f"📂 目录已创建: {d}")
-
-    # 2. 创建 __init__.py 使其成为 Python 包
-    open("core/__init__.py", 'a').close()
-    open("core/phi_interface/__init__.py", 'a').close()
-
-    # 3. 写入文件
-    create_file("core/phi_interface/turtlebot_core.py", TURTLEBOT_CORE_PY)
-    create_file("ros_ws/src/eicps_phi/scripts/eicps_phi_node.py", EICPS_NODE_PY)
-    create_file("ros_ws/src/eicps_phi/launch/eicps_turtlebot.launch", LAUNCH_XML)
-    create_file("requirements.txt", REQUIREMENTS_TXT)
-    create_file("README.md", README_MD)
-    create_file(".gitignore", GITIGNORE
+if __name__ == "__main__":
+    main()
