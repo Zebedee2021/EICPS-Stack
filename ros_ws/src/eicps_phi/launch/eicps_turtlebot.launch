@@ -1,0 +1,9 @@
+<launch>
+  <arg name="d_min" default="0.20" doc="安全距离阈值 (m)"/>
+  <arg name="v_max" default="0.26" doc="最大线速度 (m/s)"/>
+  
+  <node pkg="eicps_phi" type="eicps_phi_node.py" name="eicps_phi_node" output="screen">
+    <param name="d_min" value="$(arg d_min)"/>
+    <param name="v_max" value="$(arg v_max)"/>
+  </node>
+</launch>

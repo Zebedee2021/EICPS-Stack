@@ -1,0 +1,5 @@
+numpy>=1.20.0
+scipy>=1.7.0
+osqp>=0.6.2
+rospkg>=1.3.0
+matplotlib>=3.5.0
